@@ -48,7 +48,7 @@ accent_model = InferAccent()
 # Initialize UniDic wrapper from tdmelodic if needed
 # We need to point to the installed unidic
 import unidic
-unidic_wrapper = UniDic(unidic_path=unidic.DICDIR)
+unidic_wrapper = UniDic(unidic_path=unidic.DICDIR, mecabrc_path="mecabrc")
 
 @app.get("/")
 def read_root():
@@ -115,84 +115,162 @@ def analyze(request: AnalyzeRequest):
     Y_vow    = ''.join([s + ' ' for s in Y_vow])
     Y_con    = ''.join([s + ' ' for s in Y_con])
     
+    print(f"DEBUG: Text={text}")
+    if len(mecab_parsed) > 0:
+        print(f"DEBUG: Mecab Acc={mecab_parsed[0].get('acc')}, Concat={mecab_parsed[0].get('concat')}")
+    print(f"DEBUG: S_acc={S_acc}")
+    
     # Mappings
     from tdmelodic.nn.lang.japanese.kana.kanamap.kanamap_normal import roman_map
-    from tdmelodic.nn.lang.category.symbol_map import (
-        char_symbol_to_numeric, 
-        numeric_to_char_symbol
-    )
-    from tdmelodic.nn.lang.japanese.accent.accent_alignment import accent_map
+    from tdmelodic.nn.lang.japanese.accent.accent_alignment import accent_align
     
-    # We need to handle padding if we were batching, but for single item we just need Arrays.
-    # Actually `concat_examples` in `convert_dic.py` pads 0.
-    # Here we have 1 item.
+    # Check if we have a valid accent kernel from dictionary
+    acc_kernel_str = mecab_parsed[0].get('acc')
+    preds = []
     
-    def to_np(seq, mapping, dtype=np.int32):
-        return np.array([mapping[c] for c in seq], dtype)
+    # Try to use dictionary accent first
+    if acc_kernel_str and acc_kernel_str.isdigit():
+        kernel = int(acc_kernel_str)
+        # Convert yomi to roman for accent_align (it expects 1 mora = 2 chars roughly? No, accent_align doc says 'roman')
+        # Actually accent_align expects roman length.
+        # But we can simpler logic?
+        # accent_align implementation:
+        # Input: roman (string), a_kernel (int).
+        # It calculates n_morae = len(roman) // 2.
+        # So we need romanized yomi.
         
-    S_vow_np = to_np(S_vow, roman_map)
-    S_con_np = to_np(S_con, roman_map)
-    S_acc_np = to_np(S_acc, accent_map)
-    S_pos_np = to_np(S_pos, char_symbol_to_numeric)
-    S_acccon_np = to_np(S_acccon, char_symbol_to_numeric)
-    S_gosh_np = to_np(S_gosh, char_symbol_to_numeric)
-    
-    Y_vow_np = to_np(Y_vow, roman_map)
-    Y_con_np = to_np(Y_con, roman_map)
-    
-    # X_s = S_vow_np, S_con_np, S_pos_np, S_acc_np, S_acccon_np, S_gosh_np
-    # X_y = Y_vow_np, Y_con_np
-    
-    # Need to add batch dimension?
-    # The network likely expects batch dimension.
-    # chainer.dataset.convert.concat_examples(batch) creates batch dim.
-    
-    # Let's import concat_examples
-    from chainer.dataset.convert import concat_examples
-    
-    batch = [(S_vow_np, S_con_np, S_pos_np, S_acc_np, S_acccon_np, S_gosh_np, Y_vow_np, Y_con_np)]
-    # We need a dummy 'y' (accent ground truth) for the batch if using the same structure as convert_dic?
-    # In convert_dic.py: batch = [a for a, b in batch_] -> (X..., y)
-    # And it splits X and y.
-    # Here let's just create the tuple.
-    
-    batch_item = (S_vow_np, S_con_np, S_pos_np, S_acc_np, S_acccon_np, S_gosh_np, Y_vow_np, Y_con_np)
-    # The batch function expects list of samples.
-    # Samples are tuples.
-    
-    batch_out = concat_examples([batch_item], device=-1, padding=0)
-    # output is a tuple of arrays, each has shape (1, ...)
-    
-    X_s = batch_out[:-2]
-    X_y = batch_out[-2:]
-    
-    y_dummy_GT = (X_y[0] * 0) # dummy
-    
-    # Infer
-    a_est = accent_model.infer(X_s, X_y, y_dummy_GT)
-    # a_est is numpy array (1, L)
-    
-    preds = a_est[0].tolist()
-    # Trim to length of yomi
-    preds = preds[:len(yomi)]
+        # tdmelodic provides kana2roman
+        roman = kana2roman(yomi)
+        # normalize roman to ensure 2 chars per mora? kana2roman usually does.
+        
+        # accent_align returns string like "LLHHLL..." (r=2)
+        acc_str_full = accent_align(roman, str(kernel))
+        
+        # Subsample to get 1 char per mora. Stride 2.
+        # acc_str_full corresponds to roman (2 chars per mora).
+        # So we take every 2nd char?
+        # accent_align uses r=2. 'L'*r. So "LL".
+        # We just need one of them.
+        acc_str = acc_str_full[0::2]
+        
+        # Map L->1, H->2
+        preds = [1 if c == 'L' else 2 if c == 'H' else 0 for c in acc_str]
+        
+        # Limit to morae length
+        morae = sep_katakana2mora(yomi)
+        if len(preds) > len(morae):
+             preds = preds[:len(morae)]
+        elif len(preds) < len(morae):
+             # padding?
+             preds += [1] * (len(morae) - len(preds))
+
+    else:
+        # Fallback to ML model
+        
+        def to_np(seq, mapping, dtype=np.int32):
+            return np.array([mapping[c] for c in seq], dtype)
+            
+        S_vow_np = to_np(S_vow, roman_map)
+        S_con_np = to_np(S_con, roman_map)
+        S_acc_np = to_np(S_acc, accent_map)
+        S_pos_np = to_np(S_pos, char_symbol_to_numeric)
+        S_acccon_np = to_np(S_acccon, char_symbol_to_numeric)
+        S_gosh_np = to_np(S_gosh, char_symbol_to_numeric)
+        
+        Y_vow_np = to_np(Y_vow, roman_map)
+        Y_con_np = to_np(Y_con, roman_map)
+        
+        # Import concat_examples
+        from chainer.dataset.convert import concat_examples
+        
+        batch_item = (S_vow_np, S_con_np, S_pos_np, S_acc_np, S_acccon_np, S_gosh_np, Y_vow_np, Y_con_np)
+        batch_out = concat_examples([batch_item], device=-1, padding=0)
+        
+        X_s = batch_out[:-2]
+        X_y = batch_out[-2:]
+        y_dummy_GT = (X_y[0] * 0) 
+        
+        # Infer
+        a_est = accent_model.infer(X_s, X_y, y_dummy_GT)
+        preds = a_est[0].tolist()
+        # Trim to length of yomi
+        preds = preds[:len(yomi)]
     
     # Create visualization
-    # 0: Low, 1: High?
-    # Actually tdmelodic output mapping might be different.
-    # In convert_dic.py:
-    # up_symbol if a_ == 2 else down_symbol if a_ == 0 else ""
-    # This suggests 3 classes? Or just boundaries?
-    # a_est values: 0, 1, 2?
-    # If 0: "]", 1: "", 2: "[" ?
-    # Let's verify mapping.
-    
-    # sep_katakana2mora returns morae list.
     morae = sep_katakana2mora(yomi)
     
     display_str = ""
-    for m, p in zip(morae, preds):
-        prefix = "[" if p == 2 else ""
-        suffix = "]" if p == 0 else ""
+    # With 1(L) and 2(H).
+    # H-L transition is falling kernel.
+    # L-H transition?
+    # Downstep symbol "]" usually placed after the last High mora before a Low.
+    # Upstep symbol "[" usually placed before the first High mora.
+    
+    # Standard notation:
+    # Heiban (L H H ...): [ L H H ...
+    # Atamadaka (H L ...):  H ] L ...
+    # Nakadaka (L H ... H L): [ L H ... H ] L
+    
+    # My simple viz code using 2(H) and 1(L):
+    # If change L->H: insert "[" ?
+    # If change H->L: insert "]" ?
+    
+    # Let's iterate.
+    # Logic:
+    # If current is H and previous was L (or start): could be start of high.
+    # If current is L and previous was H: end of high.
+    
+    # But wait, original code was:
+    # prefix = "[" if p == 2 else ""
+    # suffix = "]" if p == 0 else ""
+    # This was assuming preds had specifically "Up/Down" codes (2/0).
+    # BUT accent_map for ML output might be H=2, L=1.
+    # If I changed preds to be H=2, L=1, I must update viz code.
+    
+    # Let's update viz code to work with L/H sequence.
+    
+    last_p = 1 # Assume start is Low-ish or handle first mora specially?
+    # Actually, first mora:
+    # If H (Atamadaka): Starts H.
+    # If L (Others): Starts L.
+    
+    # Refined viz:
+    # We want [ before first H (if not first mora?)
+    # We want ] after last H (if followed by L).
+    
+    display_str = ""
+    for i, (m, p) in enumerate(zip(morae, preds)):
+        prefix = ""
+        suffix = ""
+        
+        # Check start of High
+        if p == 2:
+             if i == 0:
+                 pass # Start high, no bracket usually? Or maybe [ at start? 
+                 # Usually Atamadaka is just "Hashi" with line on top of Ha.
+                 # Text viz: "ハ[シ" ? No.
+                 # "箸" (H-L): H ] L.  "ハ]シ"
+                 # "橋" (L-H): L [ H.  "ハ[シ"
+             else:
+                 prev = preds[i-1]
+                 if prev == 1: # L -> H
+                     prefix = "["
+        
+        # Check end of High (Fall)
+        if p == 2:
+            # Look ahead?
+            if i + 1 < len(preds):
+                next_p = preds[i+1]
+                if next_p == 1: # H -> L
+                    suffix = "]"
+            else:
+                # End of word.
+                # If Odaka (Hashi bridge), it falls AFTER word (particle).
+                # But within word, it stays H?
+                pass
+        elif p == 1:
+            pass # Low
+            
         display_str += prefix + m + suffix
         
     return {
@@ -201,7 +279,7 @@ def analyze(request: AnalyzeRequest):
         "accent_pattern": preds,
         "accent_code": display_str
     }
-    
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

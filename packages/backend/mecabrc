@@ -1,0 +1,28 @@
+; Custom mecabrc for correct UniDic 1.1.0 feature mapping
+; Based on tdmelodic/nn/lang/mecab/my_mecabrc
+
+; Unicode 2.1.2+ uses different indices for accent info
+; f[24]: aType (Accent Nucleus)
+; f[25]: aConType (Accent Connection Type)
+
+dictionary-charset = utf8
+config-charset = utf8
+
+cost-factor = 700
+max-grouping-size = 10
+eval-size = 10
+unk-eval-size = 4
+
+bos-feature = BOS/EOS,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*
+
+output-format-type = acc
+
+; Corrected node-format-acc
+; Original was: %m\t%f[9]\t%f[6]\t%F-[0,1,2,3]\t%f[12]\t%f[23]\t%f[24]\n
+; New is:       %m\t%f[9]\t%f[6]\t%F-[0,1,2,3]\t%f[12]\t%f[24]\t%f[25]\n
+; Fields: Surface, Pron, lForm, POS, Goshu, AccentType, AccentConType
+
+node-format-acc = %m\t%f[9]\t%f[6]\t%F-[0,1,2,3]\t%f[12]\t%f[24]\t%f[25]\n
+unk-format-acc  = %m\t%m\t%m\t%F-[0,1,2,3]\t*\t*\t*\t*\n
+bos-format-acc  =
+eos-format-acc  = EOS\n
