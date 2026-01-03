@@ -1,0 +1,15 @@
+[project]
+name = "hashi-backend"
+version = "0.1.0"
+description = "Backend for Japanese Pitch Accent Game"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "tdmelodic",
+    "sudachipy",
+    "sudachipy-dictionaries-small"
+]
+
+[tool.uv]
+dev-dependencies = []
