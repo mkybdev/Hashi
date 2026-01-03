@@ -1,0 +1,22 @@
+# Task Checklist: Japanese Pitch Accent Game
+
+- [ ] **Phase 1: Project Initialization & Setup**
+    - [/] Create initial documentation (AGENTS.md, docs/implementation_plan.md)
+    - [ ] Initial Git Commit
+    - [ ] Setup Monorepo with Bun Workspaces (root package.json)
+    - [ ] Configure .gitignore
+    - [ ] Initialize `packages/frontend` (Vite + React)
+    - [ ] Initialize `packages/backend` (Python)
+- [ ] **Phase 2: Backend Implementation (FastAPI)**
+    - [ ] Setup Python environment and dependencies (FastAPI, tdmelodic, sudachipy)
+    - [ ] Implement accent analysis logic with tdmelodic
+    - [ ] Create API endpoint `POST /analyze`
+    - [ ] Verify API locally
+- [ ] **Phase 3: Frontend Implementation (Vite + React)**
+    - [ ] Setup TailwindCSS and 8bitcn-ui
+    - [ ] Implement Game Logic (Target selection, Input form, Comparison)
+    - [ ] Apply 8-bit UI Design & Animations
+- [ ] **Phase 4: Infrastructure & Deployment**
+    - [ ] Dockerize Backend
+    - [ ] Configure Firebase Hosting & Rewrites
+    - [ ] Deploy to Cloud Run (Backend) & Firebase (Frontend)
