@@ -3,10 +3,10 @@
 ## 1. プロジェクト概要
 日本語の単語の発音アクセントを利用したゲームを作成します。
 ユーザーはターゲット単語と同じアクセントを持つ単語を入力し、正解を目指します。
-デザインは 8bit 調で統一し、モダンな Web 技術（Vite, Bun, Firebase, GCP）を使用します。
+デザインは 8bit 調で統一し、モダンな Web 技術（Vite, React, Firebase, GCP）を使用します。
 
 ## 2. アーキテクチャ構成
-- **リポジトリ**: Monorepo (Bun Workspaces)
+- **リポジトリ**: Monorepo (npm workspaces)
 - **インフラ**: Google Cloud Platform (Free Tier ベース)
     - **Frontend**: Firebase Hosting
     - **Backend**: Cloud Run (Python, Dockerized)
@@ -18,7 +18,7 @@
 
 ### Phase 1: プロジェクト初期化と環境構築
 - [ ] **Monorepo セットアップ**:
-    - ルート `package.json` の作成 (Bun Workspaces 設定)。
+    - ルート `package.json` の作成 (npm workspaces 設定)。
     - `.gitignore` の整備 (Python, Node, macOS 用)。
 - [ ] **パッケージディレクトリ作成**:
     - `packages/frontend`: Vite (React + TypeScript) で初期化。

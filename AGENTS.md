@@ -4,12 +4,12 @@ This project is a web-based game where players must guess words that share the s
 
 ## Technology Stack
 
-- **Monorepo Structure**: Managed by `bun` (where applicable for JS).
+- **Monorepo Structure**: Managed by `npm` workspaces (or standard folder structure).
 - **Frontend**:
   - **Framework**: Vite + React
   - **Hosting**: Firebase Hosting
   - **UI Library**: `TheOrcDev/8bitcn-ui` (Shadcn/ui based 8-bit aesthetic)
-  - **Package Manager**: `bun`
+  - **Package Manager**: `npm`
 - **Backend**:
   - **Runtime**: Python 3.10+
   - **Framework**: FastAPI (Lightweight, fast)
@@ -28,8 +28,8 @@ This project is a web-based game where players must guess words that share the s
 │   ├── frontend/       # Vite + React app
 │   └── backend/        # FastAPI + tdmelodic app
 ├── firebase.json       # Firebase configuration (Hosting + Rewrites)
-├── bun.lockb
-└── package.json        # Root scripts
+├── package.json        # Root scripts
+└── package-lock.json
 ```
 
 ## Game Mechanics
@@ -46,5 +46,10 @@ This project is a web-based game where players must guess words that share the s
 
 ## Development Setup
 
--   **Frontend**: `bun run dev` (in `packages/frontend`)
+-   **Frontend**: `npm run dev` (in `packages/frontend`)
 -   **Backend**: `uvicorn main:app --reload` (in `packages/backend`)
+
+## Instructions for Agents
+
+- **Language**: Always use **Japanese** for your responses and documentation.
+

@@ -6,9 +6,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:frontend": "bun run --cwd packages/frontend dev",
+    "dev:frontend": "npm run --prefix packages/frontend dev",
     "dev:backend": "cd packages/backend && uvicorn main:app --reload",
-    "build:frontend": "bun run --cwd packages/frontend build",
-    "lint": "bun run --filter '*' lint"
+    "build:frontend": "npm run --prefix packages/frontend build",
+    "lint": "npm run --prefix packages/frontend lint"
   }
 }

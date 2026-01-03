@@ -39,6 +39,4 @@ env/
 .vscode/
 .idea/
 
-# Bun
-.bun/
-bun.lockb
+
