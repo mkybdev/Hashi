@@ -102,7 +102,7 @@ class CustomConverter(OriginalConverter):
         self.unidic = UniDic(unidic_path=unidic.DICDIR, mecabrc_path="mecabrc")
 
         # Initialize Sudachi for robust readings
-        self.tokenizer_obj = dictionary.Dictionary(dict="small").create()
+        self.sudachi_dict = dictionary.Dictionary(dict="small")
         self.mode = tokenizer.Tokenizer.SplitMode.C
 
     def convert(self, text: str):
@@ -110,7 +110,9 @@ class CustomConverter(OriginalConverter):
         surface = normalize_jpn(text)
 
         # 2. Sudachi Analysis for Yomi
-        tokens = self.tokenizer_obj.tokenize(text, self.mode)
+        # Create tokenizer per request to ensure thread safety (avoids RuntimeError: Already borrowed)
+        tokenizer_instance = self.sudachi_dict.create()
+        tokens = tokenizer_instance.tokenize(text, self.mode)
         yomi = "".join([m.reading_form() for m in tokens])
 
         # 3. UniDic Analysis & Dictionary Accent Check
