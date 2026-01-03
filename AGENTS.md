@@ -13,8 +13,8 @@ This project is a web-based game where players must guess words that share the s
 - **Backend**:
   - **Runtime**: Python 3.10+
   - **Framework**: FastAPI (Lightweight, fast)
-  - **Inference**: `PKSHATechnology-Research/tdmelodic` (Accent estimation)
-  - **Morphological Analysis**: `sudachipy` (if needed by tdmelodic)
+  - **Inference**: `PKSHATechnology-Research/tdmelodic` (Submodule integration with dictionary priority logic)
+  - **Morphological Analysis**: `sudachipy` + `UniDic` (Custom mecabrc for correct feature extraction)
   - **Infrastructure**: Google Cloud Run (Serverless, Free Tier eligible)
 - **Infrastructure / DevOps**:
   - **Platform**: GCP (Google Cloud Platform)

@@ -1,0 +1,3 @@
+[submodule "packages/backend/vendor/tdmelodic"]
+	path = packages/backend/vendor/tdmelodic
+	url = https://github.com/PKSHATechnology-Research/tdmelodic.git
