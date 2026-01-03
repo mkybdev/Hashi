@@ -54,7 +54,7 @@ unidic_wrapper = UniDic(unidic_path=unidic.DICDIR)
 def read_root():
     return {"status": "ok", "service": "tdmelodic-api"}
 
-@app.post("/analyze", response_model=AnalyzeResponse)
+@app.post("/api/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest):
     text = request.text
     
