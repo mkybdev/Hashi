@@ -2,9 +2,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import sys
 import os
-import numpy as np
-
 import importlib.util
+from typing import Any, TYPE_CHECKING
+
 from sudachipy import tokenizer
 from sudachipy import dictionary
 
@@ -16,70 +16,91 @@ try:
         _convert_yomi_to_codes,
         normalize_jpn,
         UniDic,
-        kana2roman
+        kana2roman,
     )
     from tdmelodic.nn.lang.japanese.kana.mora_sep import sep_katakana2mora
     from tdmelodic.nn.lang.japanese.kana.kanamap.kanamap_normal import roman_map
     from tdmelodic.nn.lang.category.symbol_map import char_symbol_to_numeric
-    from tdmelodic.nn.lang.japanese.accent.accent_alignment import accent_map, accent_align
+    from tdmelodic.nn.lang.japanese.accent.accent_alignment import (
+        accent_map,
+        accent_align,
+    )
     from chainer.dataset.convert import concat_examples
 except ImportError as e:
     print(f"Error importing tdmelodic: {e}")
     sys.exit(1)
 
+if TYPE_CHECKING:
+
+    class OriginalConverter:
+        def encode_sy(self, surface: str, yomi: str) -> Any: ...
+        def add_batch_dim(self, s: Any, y: Any) -> Any: ...
+        def infer(self, s: Any, l: Any) -> Any: ...
+
+else:
+    OriginalConverter = object
+
 # Dynamically load Converter from vendor submodule
 # because it is missing in the installed package.
 # Also inject tdmelodic.util which is missing in installed package but needed by convert.py
 try:
-    vendor_root = os.path.join(os.path.dirname(__file__), "vendor", "tdmelodic", "tdmelodic")
-    
+    vendor_root = os.path.join(
+        os.path.dirname(__file__), "vendor", "tdmelodic", "tdmelodic"
+    )
+
     # Packet: tdmelodic.util
     util_dir = os.path.join(vendor_root, "util")
     util_init = os.path.join(util_dir, "__init__.py")
     spec_util = importlib.util.spec_from_file_location("tdmelodic.util", util_init)
-    module_util = importlib.util.module_from_spec(spec_util)
-    # Important: Set __path__ so that submodules (like dic_index_map) can be found
-    module_util.__path__ = [util_dir] 
-    sys.modules["tdmelodic.util"] = module_util
-    spec_util.loader.exec_module(module_util)
+    if spec_util and spec_util.loader:
+        module_util = importlib.util.module_from_spec(spec_util)
+        # Important: Set __path__ so that submodules (like dic_index_map) can be found
+        module_util.__path__ = [util_dir]
+        sys.modules["tdmelodic.util"] = module_util
+        spec_util.loader.exec_module(module_util)
 
     # Convert Module
     convert_path = os.path.join(vendor_root, "nn", "convert.py")
     spec = importlib.util.spec_from_file_location("tdmelodic.nn.convert", convert_path)
-    convert_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(convert_module)
-    OriginalConverter = convert_module.Converter
+    if spec and spec.loader:
+        convert_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(convert_module)
+        if not TYPE_CHECKING:
+            OriginalConverter = convert_module.Converter
 except Exception as e:
     print(f"Error loading tdmelodic submodule: {e}")
     # Print traceback to help debugging
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
 app = FastAPI()
 
+
 class AnalyzeRequest(BaseModel):
     text: str
+
 
 class AnalyzeResponse(BaseModel):
     text: str
     reading: str
     accent_pattern: list[int]
-    accent_code: str # Visualization string (e.g. "ハ[シ")
+    accent_code: str  # Visualization string (e.g. "ハ[シ")
 
-# ... previous lines ...
-# ... imports ...
+
 class CustomConverter(OriginalConverter):
     def __init__(self):
         # Do not call super().__init__() because it crashes trying to find default mecabrc
         # Instead, we manually initialize what the parent would have, but with CORRECT arguments.
         self.model = InferAccent()
-        
+
         # Override UniDic to use OUR custom mecabrc
         # We assume 'unidic' package is installed in the env.
         import unidic
+
         self.unidic = UniDic(unidic_path=unidic.DICDIR, mecabrc_path="mecabrc")
-        
+
         # Initialize Sudachi for robust readings
         self.tokenizer_obj = dictionary.Dictionary(dict="small").create()
         self.mode = tokenizer.Tokenizer.SplitMode.C
@@ -87,87 +108,102 @@ class CustomConverter(OriginalConverter):
     def convert(self, text: str):
         # 1. Normalize (Standard step, though encode_sy also does some)
         surface = normalize_jpn(text)
-        
+
         # 2. Sudachi Analysis for Yomi
         tokens = self.tokenizer_obj.tokenize(text, self.mode)
         yomi = "".join([m.reading_form() for m in tokens])
-        
+
         # 3. UniDic Analysis & Dictionary Accent Check
         # We need to manually check for the dictionary kernel because encode_sy doesn't return it.
         tmp = self.unidic.get_n_best(surface, yomi)
         if not tmp:
-             raise HTTPException(status_code=400, detail="Could not analyze text")
-        
+            raise HTTPException(status_code=400, detail="Could not analyze text")
+
         lst_mecab_parsed, rank, ld = tmp
         mecab_parsed = lst_mecab_parsed[0]
-        
+
         acc_kernel_str = None
         if len(mecab_parsed) == 1:
-            acc_kernel_str = mecab_parsed[0].get('acc')
-            
+            acc_kernel_str = mecab_parsed[0].get("acc")
+
         preds = []
-        
+        current_level = 1  # Default initialization
+
         if acc_kernel_str and acc_kernel_str.isdigit():
             # Dictionary Fast Path
             kernel = int(acc_kernel_str)
             roman = kana2roman(yomi)
             acc_str_full = accent_align(roman, str(kernel))
             acc_str = acc_str_full[0::2]
-            preds = [1 if c == 'L' else 2 if c == 'H' else 0 for c in acc_str]
+            preds = [1 if c == "L" else 2 if c == "H" else 0 for c in acc_str]
+            if preds:
+                current_level = preds[-1]
         else:
-             # ML Fallback using Parent Logic
-             # We use parent methods to ensure consistency with library implementation
-             s_np, y_np = self.encode_sy(surface, yomi)
-             s_np, y_np = self.add_batch_dim(s_np, y_np)
-             codes = self.infer(s_np, y_np).tolist()[0]
-             
-             # Convert valid tdmelodic codes (0=], 1=, 2=[) to Pitch Levels (1=L, 2=H)
-             current_level = 2 if (len(codes) > 0 and codes[0] == 0) else 1
-             preds = []
-             for c in codes:
-                 preds.append(current_level)
-                 if c == 2: # Rise -> Next H
-                     current_level = 2
-                 elif c == 0: # Fall -> Next L
-                     current_level = 1
-                 # c==1 -> Next same as current
+            # ML Fallback using Parent Logic
+            # We use parent methods to ensure consistency with library implementation
+            if hasattr(self, "encode_sy"):  # Runtime check or trust the flow
+                s_np, y_np = self.encode_sy(surface, yomi)
+                s_np, y_np = self.add_batch_dim(s_np, y_np)
+                codes = self.infer(s_np, y_np).tolist()[0]
+
+                # Convert valid tdmelodic codes (0=], 1=, 2=[) to Pitch Levels (1=L, 2=H)
+                current_level = 2 if (len(codes) > 0 and codes[0] == 0) else 1
+                preds = []
+                for c in codes:
+                    preds.append(current_level)
+                    if c == 2:  # Rise -> Next H
+                        current_level = 2
+                    elif c == 0:  # Fall -> Next L
+                        current_level = 1
+                    # c==1 -> Next same as current
+            else:
+                # Should not happen if initialization worked
+                raise HTTPException(
+                    status_code=500, detail="Model not initialized correctly"
+                )
 
         # 6. Post-process trimming
         morae = sep_katakana2mora(yomi)
-        preds = preds[:len(morae)]
+        preds = preds[: len(morae)]
         if len(preds) < len(morae):
-             preds += [current_level] * (len(morae) - len(preds))
-             
+            preds += [current_level] * (len(morae) - len(preds))
+
         # 7. Visualization
         display_str = ""
         for i, (m, p) in enumerate(zip(morae, preds)):
             prefix = ""
             suffix = ""
-            if p == 2: # High
-                if i == 0 or preds[i-1] == 1:
-                     if i > 0: prefix = "["
+            if p == 2:  # High
+                if i == 0 or preds[i - 1] == 1:
+                    if i > 0:
+                        prefix = "["
             if p == 2:
-                if i + 1 < len(preds) and preds[i+1] == 1:
+                if i + 1 < len(preds) and preds[i + 1] == 1:
                     suffix = "]"
             display_str += prefix + m + suffix
-            
+
         return {
             "text": text,
             "reading": yomi,
             "accent_pattern": preds,
-            "accent_code": display_str
+            "accent_code": display_str,
         }
 
+
 converter = CustomConverter()
+
 
 @app.get("/")
 def read_root():
     return {"status": "ok", "service": "tdmelodic-api"}
 
+
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest):
     return converter.convert(request.text)
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
