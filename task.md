@@ -7,16 +7,16 @@
     - [x] Configure .gitignore
     - [x] Initialize `packages/frontend` (Vite + React)
     - [x] Initialize `packages/backend` (Python)
-- [ ] **Phase 2: Backend Implementation (FastAPI)**
+- [x] **Phase 2: Backend Implementation (FastAPI)**
     - [x] Setup Python environment and dependencies (FastAPI, tdmelodic, sudachipy)
     - [x] Implement accent analysis logic with tdmelodic
     - [x] Create API endpoint `POST /analyze`
-    - [/] Verify API locally
-- [ ] **Phase 3: Frontend Implementation (Vite + React)**
-    - [ ] Setup TailwindCSS and 8bitcn-ui
-    - [ ] Implement Game Logic (Target selection, Input form, Comparison)
-    - [ ] Apply 8-bit UI Design & Animations
+    - [x] Verify API locally
+- [x] **Phase 3: Frontend Implementation (Vite + React)**
+    - [x] Setup TailwindCSS and 8bitcn-ui
+    - [x] Implement Game Logic (Target selection, Input form, Comparison)
+    - [x] Apply 8-bit UI Design & Animations
 - [ ] **Phase 4: Infrastructure & Deployment**
-    - [ ] Dockerize Backend
-    - [ ] Configure Firebase Hosting & Rewrites
+    - [x] Dockerize Backend
+    - [x] Configure Firebase Hosting & Rewrites
     - [ ] Deploy to Cloud Run (Backend) & Firebase (Frontend)
