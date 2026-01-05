@@ -1,6 +1,6 @@
 import type { AnalyzeResponse } from "./types.ts";
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export const fetchTargetWord = async (minMora = 2, maxMora = 8): Promise<AnalyzeResponse> => {
   const res = await fetch(`${API_BASE}/target-word?min_mora=${minMora}&max_mora=${maxMora}`);
