@@ -79,6 +79,23 @@ except Exception as e:
 
 app = FastAPI()
 
+# Configure CORS
+from fastapi.middleware.cors import CORSMiddleware
+
+# In production, this should be set to the actual frontend domain
+# For now, we allow all origins to make development and deployment easier
+origins = [
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class AnalyzeRequest(BaseModel):
     text: str
