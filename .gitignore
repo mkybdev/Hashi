@@ -39,6 +39,10 @@ env/
 .vscode/
 .idea/
 
+docs/
 
 task.md
 walkthrough.md
+
+packages/backend/data/**
+!*.db
