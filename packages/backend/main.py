@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import sys
 import os
+import sqlite3
+import json
 import importlib.util
 from typing import Any, TYPE_CHECKING
 
@@ -105,6 +107,22 @@ class CustomConverter(OriginalConverter):
         self.sudachi_dict = dictionary.Dictionary(dict="small")
         self.mode = tokenizer.Tokenizer.SplitMode.C
 
+    def generate_visualization(self, reading: str, pattern: list[int]) -> str:
+        morae = sep_katakana2mora(reading)
+        display_str = ""
+        for i, (m, p) in enumerate(zip(morae, pattern)):
+            prefix = ""
+            suffix = ""
+            if p == 2:  # High
+                if i == 0 or pattern[i - 1] == 1:
+                    if i > 0:
+                        prefix = "["
+            if p == 2:
+                if i + 1 < len(pattern) and pattern[i + 1] == 1:
+                    suffix = "]"
+            display_str += prefix + m + suffix
+        return display_str
+
     def convert(self, text: str):
         # 1. Normalize (Standard step, though encode_sy also does some)
         surface = normalize_jpn(text)
@@ -127,6 +145,9 @@ class CustomConverter(OriginalConverter):
         acc_kernel_str = None
         if len(mecab_parsed) == 1:
             acc_kernel_str = mecab_parsed[0].get("acc")
+            # Handle multiple accent types (e.g. "1,2") by taking the first one
+            if acc_kernel_str and "," in acc_kernel_str:
+                acc_kernel_str = acc_kernel_str.split(",")[0]
 
         preds = []
         current_level = 1  # Default initialization
@@ -171,18 +192,7 @@ class CustomConverter(OriginalConverter):
             preds += [current_level] * (len(morae) - len(preds))
 
         # 7. Visualization
-        display_str = ""
-        for i, (m, p) in enumerate(zip(morae, preds)):
-            prefix = ""
-            suffix = ""
-            if p == 2:  # High
-                if i == 0 or preds[i - 1] == 1:
-                    if i > 0:
-                        prefix = "["
-            if p == 2:
-                if i + 1 < len(preds) and preds[i + 1] == 1:
-                    suffix = "]"
-            display_str += prefix + m + suffix
+        display_str = self.generate_visualization(yomi, preds)
 
         return {
             "text": text,
@@ -195,6 +205,16 @@ class CustomConverter(OriginalConverter):
 converter = CustomConverter()
 
 
+# DB Setup
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "candidates.db")
+
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "service": "tdmelodic-api"}
@@ -203,6 +223,35 @@ def read_root():
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest):
     return converter.convert(request.text)
+
+
+@app.get("/api/target-word", response_model=AnalyzeResponse)
+def get_target_word(min_mora: int = 2, max_mora: int = 8):
+    conn = get_db_connection()
+    try:
+        # Get random word within mora range
+        # SQLite ORDER BY RANDOM() is okay for small datasets
+        row = conn.execute(
+            "SELECT * FROM candidates WHERE mora_count >= ? AND mora_count <= ? ORDER BY RANDOM() LIMIT 1",
+            (min_mora, max_mora),
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404, detail="No words found for this difficulty"
+            )
+
+        accent_pattern = json.loads(row["accent_pattern"])
+        accent_code = converter.generate_visualization(row["reading"], accent_pattern)
+
+        return {
+            "text": row["text"],
+            "reading": row["reading"],
+            "accent_pattern": accent_pattern,
+            "accent_code": accent_code,
+        }
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

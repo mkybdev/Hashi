@@ -52,4 +52,7 @@ This project is a web-based game where players must guess words that share the s
 ## Instructions for Agents
 
 - **Language**: Always use **Japanese** for your responses and documentation.
+- **Backend Development Server Management**:
+  - When using the development server, first check if it is already running. If it is, use the existing instance.
+  - If you need to start a new instance, ensure it runs only for the duration of the task and is stopped once the task is complete.
 
