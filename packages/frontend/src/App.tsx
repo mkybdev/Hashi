@@ -2,14 +2,8 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { WORD_LIST } from './constants'
-
-interface AnalyzeResponse {
-  text: string
-  reading: string
-  accent_pattern: number[]
-  accent_code: string
-}
+import { fetchTargetWord, analyzeText as apiAnalyzeText } from './api'
+import type { AnalyzeResponse } from './types'
 
 function App() {
   const [targetWord, setTargetWord] = useState<string>("")
@@ -26,33 +20,24 @@ function App() {
     startNewGame()
   }, [])
 
-  const analyzeText = async (text: string): Promise<AnalyzeResponse> => {
-    const res = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    })
-    if (!res.ok) throw new Error('Analysis failed')
-    return res.json()
-  }
-
   const startNewGame = async () => {
     setLoading(true)
     setGameStatus('idle')
     setMessage("")
     setInputWord("")
     setInputAnalysis(null)
-    
-    // Pick random word
-    const nextWord = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)]
-    setTargetWord(nextWord)
+    setTargetAnalysis(null)
+    setTargetWord("")
     
     try {
-      const analysis = await analyzeText(nextWord)
-      setTargetAnalysis(analysis)
+      // Fetch target word from API
+      // Default level: 2-8 morae
+      const data = await fetchTargetWord(2, 8)
+      setTargetWord(data.text)
+      setTargetAnalysis(data)
     } catch (e) {
       console.error(e)
-      setMessage("Error loading target word data.")
+      setMessage("Error loading target word. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -66,7 +51,7 @@ function App() {
     setMessage("")
     
     try {
-      const analysis = await analyzeText(inputWord)
+      const analysis = await apiAnalyzeText(inputWord)
       setInputAnalysis(analysis)
       
       // Compare accents
