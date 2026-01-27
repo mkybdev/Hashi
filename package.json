@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev:frontend": "npm run --prefix packages/frontend dev",
-    "dev:backend": "cd packages/backend && uvicorn main:app --reload",
+    "dev:backend": "cd packages/backend && docker-compose up backend",
     "build:frontend": "npm run --prefix packages/frontend build",
     "lint": "npm run --prefix packages/frontend lint"
   }
