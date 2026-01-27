@@ -2,8 +2,7 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install build dependencies
-# Install build dependencies
+# Install build dependencies including Rust for sudachipy
 # libgomp1 and openblas are required for ML libraries on Linux
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -12,11 +11,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     mecab \
     libmecab-dev \
     mecab-ipadic-utf8 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Rust (required for building sudachipy)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 COPY requirements.txt .
-# Pin setuptools<60 because newer versions break distutils compatibility required by older libraries (chainer/numpy)
-RUN pip install --no-cache-dir "setuptools<60" wheel && \
+# Upgrade pip to prefer prebuilt wheels, then install setuptools<60 and dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir "setuptools<60" wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 # Download UniDic
