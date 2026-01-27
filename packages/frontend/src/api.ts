@@ -1,4 +1,4 @@
-import type { AnalyzeResponse } from "./types.ts";
+import type { AnalyzeResponse } from './types.ts';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
