@@ -105,7 +105,11 @@ class AnalyzeResponse(BaseModel):
     text: str
     reading: str
     accent_pattern: list[int]
-    accent_code: str  # Visualization string (e.g. "ハ[シ")
+    accent_code: str
+    accents: list[int] = []
+    pitch_patterns: list[list[int]] = []
+    source: str = "tdmelodic"
+    estimated: bool = False
 
 
 class CustomConverter(OriginalConverter):
@@ -139,6 +143,16 @@ class CustomConverter(OriginalConverter):
                     suffix = "]"
             display_str += prefix + m + suffix
         return display_str
+
+    def predict_pitch(self, text: str, reading: str) -> list[int]:
+        """全モーラの上昇・下降を高低列として保持する。"""
+        surface = normalize_jpn(text)
+        s, y = self.encode_sy(surface, reading)
+        s, y = self.add_batch_dim(s, y)
+        codes = self.infer(s, y).tolist()[0]
+        mora_count = len(sep_katakana2mora(reading))
+        from pitch import from_codes
+        return from_codes(codes, mora_count)
 
     def convert(self, text: str):
         # 1. Normalize (Standard step, though encode_sy also does some)
@@ -239,7 +253,7 @@ def read_root():
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest):
-    return converter.convert(request.text)
+    return game_catalog.public(game_catalog.resolver.resolve(request.text)[0])
 
 
 @app.get("/api/target-word", response_model=AnalyzeResponse)
@@ -270,6 +284,13 @@ def get_target_word(min_mora: int = 2, max_mora: int = 8):
     finally:
         conn.close()
 
+
+
+# ゲーム用APIでは辞書のアクセント核と語彙を使って判定する。
+from game import Catalog, create_router
+from accents import AccentResolver
+game_catalog = Catalog(resolver=AccentResolver(predictor=converter.predict_pitch))
+app.include_router(create_router(game_catalog))
 
 if __name__ == "__main__":
     import uvicorn

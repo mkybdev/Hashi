@@ -14,3 +14,13 @@ poetry.lock
 .dockerignore
 Dockerfile
 README.md
+
+# Kanjiumは実行時に必要なデータとライセンスのみコピーする
+vendor/kanjium/**
+!vendor/kanjium/README.md
+!vendor/kanjium/LICENSE.txt
+!vendor/kanjium/data/
+!vendor/kanjium/data/source_files/
+!vendor/kanjium/data/source_files/raw/
+!vendor/kanjium/data/source_files/raw/accents.txt
+!vendor/kanjium/data/source_files/raw/novels_freq.txt

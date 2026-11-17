@@ -1,3 +1,6 @@
 [submodule "packages/backend/vendor/tdmelodic"]
 	path = packages/backend/vendor/tdmelodic
 	url = https://github.com/PKSHATechnology-Research/tdmelodic.git
+[submodule "packages/backend/vendor/kanjium"]
+	path = packages/backend/vendor/kanjium
+	url = https://github.com/mifunetoshiro/kanjium.git
