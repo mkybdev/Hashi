@@ -90,15 +90,15 @@ def main():
         description="Build candidates database from a Japanese word frequency corpus",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  # Use default Leeds Corpus
-  python build_db.py
+実行例（packages/backendから実行）:
+  # 既定のLeedsコーパスを使用
+  uv run python scripts/build_db.py
   
-  # Use custom corpus file
-  python build_db.py --corpus /path/to/your/wordlist.txt
+  # 独自のコーパスを使用
+  uv run python scripts/build_db.py --corpus /path/to/your/wordlist.txt
   
-  # Specify custom output database path
-  python build_db.py --corpus custom.txt --output custom_candidates.db
+  # 出力先を指定
+  uv run python scripts/build_db.py --corpus custom.txt --output custom_candidates.db
         """,
     )
     parser.add_argument(

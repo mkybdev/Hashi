@@ -1,76 +1,48 @@
-# Deployment Guide
+# デプロイガイド
 
-This guide describes how to deploy the Hashi application.
-We recommend using **Google Cloud Run** for the backend and **Vercel** for the frontend.
+バックエンドはGoogle Cloud Run、フロントエンドはFirebase Hostingへデプロイします。基本手順は[開発ガイド](../DEVELOPMENT.md#デプロイ)を参照してください。
 
-## Prerequisites
+## バックエンド（Google Cloud Run）
 
-- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated (`gcloud auth login`)
-- A GitHub repository with this project pushed
+Google Cloud CLIで認証した後、バックエンドのディレクトリで実行します。
 
----
+```bash
+cd packages/backend
+gcloud run deploy hashi-backend \
+  --source . \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --memory 2Gi \
+  --cpu 2
+```
 
-## 1. Backend Deployment (Google Cloud Run)
+Dockerfileを使用してビルドされます。Python 3.11とuvを使用し、`pyproject.toml`と`uv.lock`から`uv sync --locked --no-dev`で依存関係をインストールします。推論モデルや辞書を読み込むため、メモリは2Giを指定しています。事前に`git submodule update --init --recursive`でサブモジュールを取得してください。
 
-The backend is a FastAPI application running in a Docker container.
+## フロントエンド（Firebase Hosting）
 
-### Fast Deployment (using Source)
+リポジトリのルートで実行します。
 
-1. Open your terminal and navigate to the backend directory:
-   ```bash
-   cd packages/backend
-   ```
+```bash
+bun install --frozen-lockfile
+bun run build:frontend
+firebase deploy --only hosting
+```
 
-2. Run the deploy command:
-   ```bash
-   gcloud run deploy hashi-backend \
-     --source . \
-     --region asia-northeast1 \
-     --allow-unauthenticated \
-     --memory 2Gi \
-     --cpu 2
-   ```
-   *Note: Using `--memory 2Gi` is recommended because the application loads machine learning models (tdmelodic) and dictionaries.*
-   - If prompted to enable APIs (like Cloud Build, Cloud Run), say `y` (yes).
-   - This command zips the current directory, builds the Docker container in the cloud, and deploys it.
+`firebase.json`に従って`packages/frontend/dist`を配信し、`/api/**`をCloud Runへ転送します。
 
-3. **Get the Backend URL:**
-   Once finished, it will display a Service URL, e.g.:
-   `https://hashi-backend-xyz123-an.a.run.app`
+## Vercelで配信する場合
 
-   > **Note:** This URL is your API base. The actual API endpoints are at `/api/...`.
+Vercelにリポジトリを接続し、以下を設定します。
 
----
+- **Root Directory**: リポジトリのルート
+- **Framework Preset**: Vite
+- **Install Command**: `bun install --frozen-lockfile`
+- **Build Command**: `bun run build:frontend`
+- **Output Directory**: `packages/frontend/dist`
+- **環境変数**: `VITE_API_URL`にCloud RunのURLと`/api`を指定（例: `https://hashi-backend-xyz123-an.a.run.app/api`）
 
-## 2. Frontend Deployment (Vercel)
+ルートの`packageManager`と`bun.lock`で指定したbunと依存関係を使用してください。
 
-The frontend is a React application built with Vite.
+## 動作確認
 
-1. **Push your code** to GitHub.
-2. Go to [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New..."** -> **"Project"**.
-3. Import your implementation repository.
-4. **Configure Project:**
-   - **Framework Preset:** Vite
-   - **Root Directory:** Click "Edit" and select `packages/frontend`.
-5. **Environment Variables:**
-   - Expand the "Environment Variables" section.
-   - Add a new variable:
-     - **Name:** `VITE_API_URL`
-     - **Value:** `YOUR_BACKEND_URL/api`  
-       (e.g., `https://hashi-backend-xyz123-an.a.run.app/api`)
-       *Don't forget the `/api` at the end!*
-6. Click **"Deploy"**.
-
----
-
-## Verification
-
-1. Open your Vercel deployment URL.
-2. The game should load.
-3. Check the "Network" tab in Developer Tools. You should see requests to your Cloud Run URL (e.g., `.../api/target-word`).
-4. If requests succeed, deployment is complete!
-
-## Troubleshooting
-
-- **CORS Errors:** Ensure the Backend is deployed with the latest code containing the CORS configuration in `main.py`.
-- **404 on API calls:** Check if you included `/api` in the `VITE_API_URL` environment variable.
+配信先でゲームを開き、ブラウザーのネットワークタブで`/api/target-word`へのリクエストを確認します。404が発生する場合は、`VITE_API_URL`末尾の`/api`またはFirebaseのリライト設定を確認してください。

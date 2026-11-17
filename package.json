@@ -2,13 +2,14 @@
   "name": "hashi-monorepo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.3.9",
   "workspaces": [
-    "packages/*"
+    "packages/frontend"
   ],
   "scripts": {
-    "dev:frontend": "npm run --prefix packages/frontend dev",
-    "dev:backend": "cd packages/backend && docker-compose up backend",
-    "build:frontend": "npm run --prefix packages/frontend build",
-    "lint": "npm run --prefix packages/frontend lint"
+    "dev:frontend": "bun run --cwd packages/frontend --bun dev",
+    "dev:backend": "cd packages/backend && uv run uvicorn main:app --reload",
+    "build:frontend": "bun run --cwd packages/frontend --bun build",
+    "lint": "bun run --cwd packages/frontend --bun lint"
   }
 }

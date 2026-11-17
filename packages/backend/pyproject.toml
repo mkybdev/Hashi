@@ -2,14 +2,18 @@
 name = "hashi-backend"
 version = "0.1.0"
 description = "Backend for Japanese Pitch Accent Game"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12"
 dependencies = [
     "fastapi",
     "uvicorn",
     "tdmelodic",
     "sudachipy",
-    "sudachipy-dictionaries-small"
+    "sudachidict-small",
+    "unidic",
+    "numpy<2.0",
+    # Chainerが実行時に参照する旧distutilsとの互換性を維持する
+    "setuptools<60",
 ]
 
 [tool.uv]
-dev-dependencies = []
+build-constraint-dependencies = ["setuptools<60"]

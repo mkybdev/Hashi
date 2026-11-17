@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-tdmelodic
-sudachipy
-sudachidict-small
-unidic
-numpy<2.0

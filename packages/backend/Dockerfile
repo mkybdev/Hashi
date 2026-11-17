@@ -1,6 +1,13 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.9.16 /uv /uvx /bin/
 
 WORKDIR /app
+
+# バインドマウントで仮想環境や辞書が隠れない場所に配置する
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}" \
+    UV_PYTHON_DOWNLOADS=never
 
 # Install build dependencies including Rust for sudachipy
 # libgomp1 and openblas are required for ML libraries on Linux
@@ -18,17 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-COPY requirements.txt .
-# Upgrade pip to prefer prebuilt wheels, then install setuptools<60 and dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir "setuptools<60" wheel && \
-    pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked --no-dev --no-cache
 
 # Download UniDic
-RUN python -m unidic download
+RUN uv run --no-sync python -m unidic download
 
 COPY . .
 
 # Cloud Run injects the PORT environment variable (default 8080)
 ENV PORT=8080
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "uv run --no-sync uvicorn main:app --host 0.0.0.0 --port ${PORT}"]

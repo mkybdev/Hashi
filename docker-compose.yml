@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -11,5 +9,5 @@ services:
       - PORT=8080
     volumes:
       - ./packages/backend:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+    command: uv run --no-sync uvicorn main:app --host 0.0.0.0 --port 8080 --reload
     restart: unless-stopped
