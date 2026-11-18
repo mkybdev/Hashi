@@ -8,15 +8,16 @@ Google Cloud CLIで認証した後、バックエンドのディレクトリで�
 
 ```bash
 cd packages/backend
-gcloud run deploy hashi-backend \
+gcloud run deploy backend \
   --source . \
+  --project hashi-game \
   --region asia-northeast1 \
   --allow-unauthenticated \
-  --memory 2Gi \
+  --memory 4Gi \
   --cpu 2
 ```
 
-Dockerfileを使用してビルドされます。Python 3.11とuvを使用し、`pyproject.toml`と`uv.lock`から`uv sync --locked --no-dev`で依存関係をインストールします。推論モデルや辞書を読み込むため、メモリは2Giを指定しています。事前に`git submodule update --init --recursive`でサブモジュールを取得してください。
+Dockerfileを使用してビルドされます。Python 3.11とuvを使用し、`pyproject.toml`と`uv.lock`から`uv sync --locked --no-dev`で依存関係をインストールします。推論モデルや辞書を読み込むため、既存サービスに合わせてメモリは4Giを指定しています。事前に`git submodule update --init --recursive`でサブモジュールを取得してください。
 
 ## フロントエンド（Firebase Hosting）
 
@@ -25,10 +26,10 @@ Dockerfileを使用してビルドされます。Python 3.11とuvを使用し、
 ```bash
 bun install --frozen-lockfile
 bun run build:frontend
-firebase deploy --only hosting
+firebase deploy --only hosting --project hashi-accent-game
 ```
 
-`firebase.json`に従って`packages/frontend/dist`を配信し、`/api/**`をCloud Runへ転送します。
+`firebase.json`に従って`packages/frontend/dist`を配信します。HostingとCloud Runが別プロジェクトのため、本番ビルドは`.env.production`のCloud Run URLへ直接接続します。
 
 ## Vercelで配信する場合
 
@@ -45,4 +46,4 @@ Vercelにリポジトリを接続し、以下を設定します。
 
 ## 動作確認
 
-配信先でゲームを開き、ブラウザーのネットワークタブで`/api/target-word`へのリクエストを確認します。404が発生する場合は、`VITE_API_URL`末尾の`/api`またはFirebaseのリライト設定を確認してください。
+配信先でゲームを開き、ブラウザーのネットワークタブで`/api/game/target`へのリクエストを確認します。404が発生する場合は、`VITE_API_URL`末尾の`/api`と本番ビルドの接続先を確認してください。

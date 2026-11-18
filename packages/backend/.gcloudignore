@@ -1,0 +1,7 @@
+# Dockerと同じ除外設定を使用し、ビルド定義はアップロードする
+#!include:.dockerignore
+!Dockerfile
+!.dockerignore
+.gcloudignore
+.env*
+firebase-debug.log

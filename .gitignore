@@ -5,6 +5,10 @@ dist/
 .env.local
 .DS_Store
 
+# Firebase deployment cache and logs
+.firebase/
+firebase-debug.log
+
 # Python
 __pycache__/
 *.py[cod]

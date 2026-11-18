@@ -129,6 +129,8 @@ gcloud run deploy hashi-backend \
   --allow-unauthenticated
 ```
 
+現在のバックエンドはGCPプロジェクト`hashi-game`のCloud Runサービス`backend`（`asia-northeast1`）です。更新は`packages/backend`で`gcloud run deploy backend --source . --project hashi-game --region asia-northeast1`を実行します。
+
 Dockerfileは`uv sync --locked --no-dev`で依存関係をインストールします。`uv.lock`もビルド対象に含めてください。
 
 ### フロントエンド（Firebase Hosting）
@@ -138,7 +140,7 @@ Dockerfileは`uv sync --locked --no-dev`で依存関係をインストールし�
 ```bash
 bun install --frozen-lockfile
 bun run build:frontend
-firebase deploy --only hosting
+firebase deploy --only hosting --project hashi-accent-game
 ```
 
 ## トラブルシューティング
@@ -227,3 +229,10 @@ tdmelodicが省略する冒頭の通常の上昇を復元し、それ以降の�
 cd packages/frontend
 bun run test
 ```
+
+
+## 本番の接続先とビルド
+
+Firebase Hostingは`hashi-accent-game`、Cloud Runは`hashi-game`の別プロジェクトです。本番フロントエンドは`packages/frontend/.env.production`に設定したCloud Runの`/api`へ直接アクセスします。Hostingの設定はSPA用のリライトのみです。ローカル開発では従来どおりViteの`/api`プロキシを使います。
+
+`bun run build:frontend`は子プロセスの`NODE_ENV=production`を明示して、bunとViteの両方に本番用環境ファイルを選択させます。これにより、開発用`.env`の空の`VITE_API_URL`で本番用URLが上書きされることを防ぎます。バックエンドのソースデプロイでは`.gcloudignore`を使用し、仮想環境を除外しつつKanjiumのデータ・Dockerfile・DBを含めます。

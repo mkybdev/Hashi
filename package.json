@@ -9,7 +9,7 @@
   "scripts": {
     "dev:frontend": "bun run --cwd packages/frontend --bun dev",
     "dev:backend": "cd packages/backend && uv run uvicorn main:app --reload",
-    "build:frontend": "bun run --cwd packages/frontend --bun build",
+    "build:frontend": "NODE_ENV=production bun run --cwd packages/frontend --bun build",
     "lint": "bun run --cwd packages/frontend --bun lint"
   }
 }
