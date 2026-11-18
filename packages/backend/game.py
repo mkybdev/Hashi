@@ -20,7 +20,7 @@ MAX_TARGET_FREQUENCY_RANK = 10000
 class Rules(BaseModel):
     difficulty: Difficulty = 'easy'
     homophones: bool = False
-    recent: list[str] = Field(default_factory=list, max_length=50)
+    recent: list[str] = Field(default_factory=list, max_length=1000)
 
 
 class Guess(Rules):

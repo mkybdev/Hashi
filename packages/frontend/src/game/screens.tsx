@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { useGame, Word } from './useGame';
 export type Screen = 'home' | 'help' | 'settings' | 'play' | 'result' | 'ranking';
+export const modes = { endless: 'エンドレス', marathon: 'マラソン', timeAttack: 'タイムアタック' };
+const seconds = (ms: number) => (ms / 1000).toFixed(1);
 const levels = {
   easy: 'やさしい · 2〜3拍',
   normal: 'ふつう · 4〜5拍',
@@ -69,7 +71,9 @@ export function HelpScreen({ setScreen }: Pick<ScreenProps, 'setScreen'>) {
       <ol>
         <li>お題と同じ拍数・音の高低の並びの単語を考えます。</li>
         <li>漢字・ひらがな・カタカナで入力します。</li>
-        <li>正解したら次のお題へ。時間制限はありません。</li>
+        <li>
+          正解したら次のお題へ。マラソンは時間内の正解数、タイムアタックは指定数を正解するまでの時間を競います。
+        </li>
       </ol>
       <p>
         「優位」と「周囲」はどちらも3拍・1型です。「橋」と「箸」は単語内の高低が似ていても、最後の音の後で下がるかどうかが異なります。
@@ -85,7 +89,59 @@ export function SettingsScreen({ game, start }: Pick<ScreenProps, 'game' | 'star
   return (
     <section className="menu">
       <h2>ゲーム設定</h2>
-      <p className="badge">エンドレス · 時間制限なし</p>
+      <label htmlFor="mode">ゲームモード</label>
+      <select
+        id="mode"
+        value={game.settings.mode}
+        onChange={(e) =>
+          game.setSettings({ ...game.settings, mode: e.target.value as keyof typeof modes })
+        }
+      >
+        {Object.entries(modes).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+      {game.settings.mode === 'marathon' && (
+        <>
+          <label htmlFor="time-limit">制限時間</label>
+          <select
+            id="time-limit"
+            value={game.settings.timeLimit}
+            onChange={(e) =>
+              game.setSettings({ ...game.settings, timeLimit: Number(e.target.value) })
+            }
+          >
+            {[30, 60, 120].map((value) => (
+              <option key={value} value={value}>
+                {value}秒
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+      {game.settings.mode === 'timeAttack' && (
+        <>
+          <label htmlFor="target-count">目標正解数</label>
+          <select
+            id="target-count"
+            value={game.settings.targetCount}
+            onChange={(e) =>
+              game.setSettings({ ...game.settings, targetCount: Number(e.target.value) })
+            }
+          >
+            {[5, 10, 20].map((value) => (
+              <option key={value} value={value}>
+                {value}問
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+      <p>
+        通信待ちと正解後の待機は計時しません。不正解では同じお題に再挑戦できます。スキップは正解数に含めません。
+      </p>
       <label htmlFor="difficulty">難易度</label>
       <select
         id="difficulty"
@@ -133,10 +189,29 @@ export function PlayScreen({
   return (
     <section className="menu">
       <div className="stats">
-        <span>ENDLESS</span>
-        <span>{correct} 正解</span>
+        <span>{modes[game.settings.mode]}</span>
+        <span>
+          {correct}
+          {game.settings.mode === 'timeAttack' ? ` / ${game.settings.targetCount}` : ''} 正解
+        </span>
       </div>
       <p>{levels[game.settings.difficulty]}</p>
+      {game.settings.mode !== 'endless' && (
+        <div
+          className="timer"
+          role="timer"
+          aria-label={game.settings.mode === 'marathon' ? '残り時間' : '経過時間'}
+        >
+          {game.settings.mode === 'marathon'
+            ? `残り ${Math.max(0, Math.ceil(game.settings.timeLimit - game.elapsed / 1000))} 秒`
+            : `${seconds(game.elapsed)} 秒`}
+          <small>
+            {game.loading || !!game.finished || game.feedback?.correct || !game.target
+              ? ' · 計時停止中'
+              : ' · 計時中'}
+          </small>
+        </div>
+      )}
       <div className="target">
         <span>お題</span>
         <h2>{game.target?.text || 'お題を準備中'}</h2>
@@ -171,7 +246,7 @@ export function PlayScreen({
             )
               e.preventDefault();
           }}
-          disabled={game.loading || game.feedback?.correct || !game.target}
+          disabled={game.loading || !!game.finished || game.feedback?.correct || !game.target}
           autoComplete="off"
           placeholder="例：周囲 / しゅうい"
         />
@@ -189,12 +264,18 @@ export function PlayScreen({
           {game.feedback.answer && <Accent word={game.feedback.answer} />}
         </div>
       )}
-      <Button variant="outline" disabled={game.loading} onClick={next}>
-        {game.feedback?.correct ? '次のお題へ' : 'スキップ'}
-      </Button>
-      <button className="text-button" type="button" onClick={() => leave('result')}>
-        ここまでの結果を見る
-      </button>
+      {game.finished === 'completed' ? (
+        <Button onClick={() => leave('result')}>結果を見る</Button>
+      ) : (
+        <>
+          <Button variant="outline" disabled={game.loading} onClick={next}>
+            {game.feedback?.correct ? '次のお題へ' : 'スキップ'}
+          </Button>
+          <button className="text-button" type="button" onClick={() => leave('result')}>
+            ここまでの結果を見る
+          </button>
+        </>
+      )}
     </section>
   );
 }
@@ -206,7 +287,25 @@ export function ResultScreen({
 }: Pick<ScreenProps, 'game' | 'setScreen' | 'start' | 'correct'>) {
   return (
     <section className="menu">
-      <h2>おつかれさま！</h2>
+      <h2>
+        {game.finished === 'completed'
+          ? '目標達成！'
+          : game.finished === 'timeout'
+            ? 'タイムアップ！'
+            : 'おつかれさま！'}
+      </h2>
+      <p>
+        {modes[game.settings.mode]}
+        {game.finished === 'stopped' && game.settings.mode !== 'endless' ? ' · 途中終了' : ''}
+      </p>
+      {game.settings.mode !== 'endless' && (
+        <p>
+          {game.settings.mode === 'marathon'
+            ? `制限時間 ${game.settings.timeLimit}秒`
+            : `目標 ${game.settings.targetCount}問`}{' '}
+          · 所要時間 {seconds(game.elapsed)}秒
+        </p>
+      )}
       <p className="score">
         {correct}
         <small> 正解</small>
@@ -234,9 +333,7 @@ export function RankingScreen({ setScreen }: Pick<ScreenProps, 'setScreen'>) {
   return (
     <section>
       <h2>ハイスコア一覧</h2>
-      <p>
-        共有ランキングは準備中です。現在のエンドレスモードは練習用で、ランキングには登録されません。
-      </p>
+      <p>共有ランキングは準備中です。現在のプレイ結果はランキングには登録されません。</p>
       <Button onClick={() => setScreen('settings')}>練習をはじめる</Button>
     </section>
   );

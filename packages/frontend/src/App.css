@@ -154,3 +154,15 @@ ol {
     font-size: 52px;
   }
 }
+
+.timer {
+  padding: 16px;
+  border: 2px solid #f6d889;
+  font-size: 24px;
+  color: #f6d889;
+  font-variant-numeric: tabular-nums;
+}
+.timer small {
+  display: block;
+  font-size: 12px;
+}

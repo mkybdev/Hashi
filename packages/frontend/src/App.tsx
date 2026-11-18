@@ -21,6 +21,11 @@ function App() {
   useEffect(() => {
     if (screen === 'play' && !game.loading) field.current?.focus();
   }, [screen, game.loading]);
+  useEffect(() => {
+    if (screen === 'play' && (game.finished === 'timeout' || game.finished === 'stopped')) {
+      setScreen('result');
+    }
+  }, [screen, game.finished]);
   const correct = game.history.filter((r) => r.correct).length;
   function leave(next: Screen) {
     game.cancel();

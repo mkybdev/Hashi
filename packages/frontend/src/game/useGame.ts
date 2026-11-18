@@ -1,22 +1,12 @@
-import { useRef, useState } from 'react';
-export type Settings = { difficulty: 'easy' | 'normal' | 'hard'; homophones: boolean };
-export type Word = {
-  id: number;
-  text: string;
-  reading: string;
-  key: string;
-  accents: number[];
-  pitch_patterns: number[][];
-  accent_pattern: number[];
-  source: string;
-  estimated: boolean;
-  mora_count: number;
-};
-export type Feedback = { correct: boolean; message: string; answer: Word | null; target: Word };
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { defaults, GameEngine, type Settings } from './engine';
+
+export type { Feedback, Settings, Word } from './engine';
+
 const base = import.meta.env.VITE_API_URL || '/api';
-async function request<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+async function request<T>(path: string, body: unknown, signal: AbortSignal): Promise<T> {
   const response = await fetch(`${base}/game/${path}`, {
-    signal,
+    signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -40,85 +30,22 @@ async function request<T>(path: string, body: unknown, signal?: AbortSignal): Pr
   return data as T;
 }
 export function useGame() {
-  const [settings, setSettings] = useState<Settings>({ difficulty: 'easy', homophones: false });
-  const [target, setTarget] = useState<Word | null>(null);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [history, setHistory] = useState<Feedback[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const busy = useRef(false);
-  const generation = useRef(0);
-  const controller = useRef<AbortController | null>(null);
-  const recent = history.flatMap((r) => (r.correct && r.answer ? [r.answer.key] : [])).slice(-30);
-  async function load(reset = false) {
-    if (busy.current) return;
-    busy.current = true;
-    setLoading(true);
-    setError('');
-    const token = ++generation.current;
-    controller.current = new AbortController();
-    if (reset) {
-      setTarget(null);
-      setFeedback(null);
-      setHistory([]);
-    }
-    try {
-      const word = await request<Word>(
-        'target',
-        {
-          ...settings,
-          recent: reset ? [] : [...recent, ...(target ? [target.key] : [])],
-        },
-        controller.current?.signal,
-      );
-      if (token !== generation.current) return;
-      setTarget(word);
-      setFeedback(null);
-      if (reset) setHistory([]);
-    } catch (e) {
-      if (token === generation.current) setError((e as Error).message);
-    } finally {
-      if (token === generation.current) {
-        busy.current = false;
-        setLoading(false);
-      }
-    }
-  }
-  async function guess(text: string) {
-    if (busy.current || !target || feedback?.correct || !text.trim()) return;
-    busy.current = true;
-    setLoading(true);
-    setError('');
-    const token = generation.current;
-    controller.current = new AbortController();
-    try {
-      const result = await request<Feedback>(
-        'guess',
-        {
-          ...settings,
-          recent,
-          target_id: target.id,
-          text,
-        },
-        controller.current?.signal,
-      );
-      if (token !== generation.current) return;
-      setFeedback(result);
-      setHistory((items) => [...items, result]);
-    } catch (e) {
-      if (token === generation.current) setError((e as Error).message);
-    } finally {
-      if (token === generation.current) {
-        busy.current = false;
-        setLoading(false);
-      }
-    }
-  }
-  function cancel() {
-    generation.current++;
-    controller.current?.abort();
-    busy.current = false;
-    setLoading(false);
-  }
-  return { settings, setSettings, target, feedback, history, loading, error, load, guess, cancel };
+  const [settings, setSettings] = useState<Settings>(defaults);
+  const [engine] = useState(() => new GameEngine(request));
+  const state = useSyncExternalStore(engine.subscribe, engine.getSnapshot);
+  useEffect(() => {
+    const interval = setInterval(engine.tick, 50);
+    return () => {
+      clearInterval(interval);
+      engine.stop();
+    };
+  }, [engine]);
+  return {
+    ...state,
+    settings,
+    setSettings,
+    load: (reset = false) => (reset ? engine.start(settings) : engine.load()),
+    guess: engine.guess,
+    cancel: engine.stop,
+  };
 }
