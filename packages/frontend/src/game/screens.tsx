@@ -3,7 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { useGame, Word } from './useGame';
 export type Screen = 'home' | 'help' | 'settings' | 'play' | 'result' | 'ranking';
-export const modes = { endless: 'エンドレス', marathon: 'マラソン', timeAttack: 'タイムアタック' };
+export const modes = {
+  endless: 'エンドレス',
+  marathon: 'マラソン',
+  timeAttack: 'タイムアタック',
+};
 const seconds = (ms: number) => (ms / 1000).toFixed(1);
 const levels = {
   easy: 'やさしい · 2〜3拍',
@@ -15,11 +19,12 @@ function Accent({ word }: { word: Word }) {
     <div className="accent">
       <strong>{word.text}</strong>
       <span>
-        {word.estimated
-          ? '推定アクセント（tdmelodic）'
-          : word.source === 'kanjium'
-            ? 'Kanjium'
-            : 'UniDic'}
+        {false &&
+          (word.estimated
+            ? '推定アクセント（tdmelodic）'
+            : word.source === 'kanjium'
+              ? 'Kanjium'
+              : 'UniDic')}
       </span>
       <span>
         {word.reading} · {word.mora_count}拍
@@ -48,23 +53,19 @@ type ScreenProps = {
 };
 export function HomeScreen({ setScreen }: Pick<ScreenProps, 'setScreen'>) {
   return (
-    <section className="menu">
+    <section className="menu" style={{ gap: '20px', textAlign: 'center' }}>
       <p>
         同じアクセントの、ちがうことば。
         <br />
         あなたはいくつ見つけられる？
       </p>
       <Button onClick={() => setScreen('settings')}>ゲーム開始</Button>
-      <Button variant="outline" onClick={() => setScreen('help')}>
-        遊び方
-      </Button>
-      <Button variant="outline" onClick={() => setScreen('ranking')}>
-        ハイスコア一覧
-      </Button>
+      <Button onClick={() => setScreen('help')}>遊び方</Button>
+      <Button onClick={() => setScreen('ranking')}>ハイスコア一覧</Button>
     </section>
   );
 }
-export function HelpScreen({ setScreen }: Pick<ScreenProps, 'setScreen'>) {
+export function HelpScreen() {
   return (
     <section>
       <h2>遊び方</h2>
@@ -76,12 +77,8 @@ export function HelpScreen({ setScreen }: Pick<ScreenProps, 'setScreen'>) {
         </li>
       </ol>
       <p>
-        「優位」と「周囲」はどちらも3拍・1型です。「橋」と「箸」は単語内の高低が似ていても、最後の音の後で下がるかどうかが異なります。
+        お題そのもの・表記違い・直近30回の正解は使えません。同音異義語を許可する場合は、漢字などで語を特定してください。
       </p>
-      <p>
-        お題そのもの・表記違い・直近30回の正解は使えません。回答は幅広く受け付け、お題はKanjiumの収録語のうち、使用頻度が高い語を中心に出題します。同音語を許可する場合は、漢字などで語を特定してください。
-      </p>
-      <Button onClick={() => setScreen('settings')}>やってみる</Button>
     </section>
   );
 }
@@ -94,7 +91,10 @@ export function SettingsScreen({ game, start }: Pick<ScreenProps, 'game' | 'star
         id="mode"
         value={game.settings.mode}
         onChange={(e) =>
-          game.setSettings({ ...game.settings, mode: e.target.value as keyof typeof modes })
+          game.setSettings({
+            ...game.settings,
+            mode: e.target.value as keyof typeof modes,
+          })
         }
       >
         {Object.entries(modes).map(([value, label]) => (
@@ -110,7 +110,10 @@ export function SettingsScreen({ game, start }: Pick<ScreenProps, 'game' | 'star
             id="time-limit"
             value={game.settings.timeLimit}
             onChange={(e) =>
-              game.setSettings({ ...game.settings, timeLimit: Number(e.target.value) })
+              game.setSettings({
+                ...game.settings,
+                timeLimit: Number(e.target.value),
+              })
             }
           >
             {[30, 60, 120].map((value) => (
@@ -128,7 +131,10 @@ export function SettingsScreen({ game, start }: Pick<ScreenProps, 'game' | 'star
             id="target-count"
             value={game.settings.targetCount}
             onChange={(e) =>
-              game.setSettings({ ...game.settings, targetCount: Number(e.target.value) })
+              game.setSettings({
+                ...game.settings,
+                targetCount: Number(e.target.value),
+              })
             }
           >
             {[5, 10, 20].map((value) => (
@@ -139,9 +145,7 @@ export function SettingsScreen({ game, start }: Pick<ScreenProps, 'game' | 'star
           </select>
         </>
       )}
-      <p>
-        通信待ちと正解後の待機は計時しません。不正解では同じお題に再挑戦できます。スキップは正解数に含めません。
-      </p>
+      <p>不正解時は同じお題に再挑戦できます。スキップは正解数に含めません。</p>
       <label htmlFor="difficulty">難易度</label>
       <select
         id="difficulty"
@@ -167,7 +171,7 @@ export function SettingsScreen({ game, start }: Pick<ScreenProps, 'game' | 'star
         />
         同音異義語を正解に含める
       </label>
-      <Button disabled={game.loading} onClick={start}>
+      <Button style={{ marginTop: '12px' }} disabled={game.loading} onClick={start}>
         スタート
       </Button>
     </section>
@@ -188,14 +192,17 @@ export function PlayScreen({
 >) {
   return (
     <section className="menu">
-      <div className="stats">
-        <span>{modes[game.settings.mode]}</span>
-        <span>
-          {correct}
-          {game.settings.mode === 'timeAttack' ? ` / ${game.settings.targetCount}` : ''} 正解
-        </span>
+      <div>
+        <div className="stats">
+          <span>{modes[game.settings.mode]}</span>
+          <span>
+            {'正解数: '}
+            {correct}
+            {game.settings.mode === 'timeAttack' ? ` / ${game.settings.targetCount}` : ''}
+          </span>
+        </div>
+        <p>{levels[game.settings.difficulty]}</p>
       </div>
-      <p>{levels[game.settings.difficulty]}</p>
       {game.settings.mode !== 'endless' && (
         <div
           className="timer"
@@ -205,19 +212,14 @@ export function PlayScreen({
           {game.settings.mode === 'marathon'
             ? `残り ${Math.max(0, Math.ceil(game.settings.timeLimit - game.elapsed / 1000))} 秒`
             : `${seconds(game.elapsed)} 秒`}
-          <small>
-            {game.loading || !!game.finished || game.feedback?.correct || !game.target
-              ? ' · 計時停止中'
-              : ' · 計時中'}
-          </small>
         </div>
       )}
       <div className="target">
-        <span>お題</span>
         <h2>{game.target?.text || 'お題を準備中'}</h2>
         {game.target && (
           <span>
-            {game.target.reading} · {game.target.mora_count}拍
+            {game.target.reading}
+            {false && ` · ${game.target?.mora_count}拍`}
           </span>
         )}
       </div>
@@ -227,7 +229,6 @@ export function PlayScreen({
           if (!composing.current) void game.guess(input);
         }}
       >
-        <label htmlFor="answer">同じアクセントのことば</label>
         <Input
           ref={field}
           id="answer"
@@ -248,34 +249,43 @@ export function PlayScreen({
           }}
           disabled={game.loading || !!game.finished || game.feedback?.correct || !game.target}
           autoComplete="off"
-          placeholder="例：周囲 / しゅうい"
+          placeholder="回答を入力"
         />
-        <Button
-          disabled={game.loading || !input.trim() || game.feedback?.correct || !game.target}
-          type="submit"
-        >
-          {game.loading ? '確認中…' : '回答する'}
-        </Button>
-      </form>
-      {game.feedback && (
-        <div aria-live="polite">
-          <p className={game.feedback.correct ? 'success' : 'failure'}>{game.feedback.message}</p>
-          <Accent word={game.feedback.target} />
-          {game.feedback.answer && <Accent word={game.feedback.answer} />}
-        </div>
-      )}
-      {game.finished === 'completed' ? (
-        <Button onClick={() => leave('result')}>結果を見る</Button>
-      ) : (
-        <>
-          <Button variant="outline" disabled={game.loading} onClick={next}>
-            {game.feedback?.correct ? '次のお題へ' : 'スキップ'}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            disabled={game.loading || !input.trim() || game.feedback?.correct || !game.target}
+            type="submit"
+          >
+            {game.loading ? '確認中…' : '回答する'}
           </Button>
-          <button className="text-button" type="button" onClick={() => leave('result')}>
-            ここまでの結果を見る
-          </button>
-        </>
-      )}
+          {game.finished === 'completed' ? (
+            <Button type="button" variant="secondary" onClick={() => leave('result')}>
+              結果を見る
+            </Button>
+          ) : (
+            <Button type="button" variant="secondary" disabled={game.loading} onClick={next}>
+              {game.feedback?.correct ? '次のお題へ' : 'スキップ'}
+            </Button>
+          )}
+        </div>
+        {game.feedback && (
+          <div aria-live="polite">
+            <p className={game.feedback.correct ? 'success' : 'failure'}>{game.feedback.message}</p>
+            <Accent word={game.feedback.target} />
+            {game.feedback.answer && <Accent word={game.feedback.answer} />}
+          </div>
+        )}
+        {game.finished !== 'completed' && (
+          <Button
+            type="button"
+            variant={'secondary'}
+            style={{ marginTop: '8px' }}
+            onClick={() => leave('result')}
+          >
+            リタイアして結果を見る
+          </Button>
+        )}
+      </form>
     </section>
   );
 }
@@ -320,21 +330,26 @@ export function ResultScreen({
           </li>
         ))}
       </ul>
-      <Button disabled={game.loading} onClick={start}>
-        もう一度遊ぶ
-      </Button>
-      <Button variant="outline" onClick={() => setScreen('settings')}>
-        設定を変える
-      </Button>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <Button disabled={game.loading} onClick={start}>
+          もう一度遊ぶ
+        </Button>
+        <Button variant="secondary" onClick={() => setScreen('settings')}>
+          設定を変える
+        </Button>
+      </div>
     </section>
   );
 }
-export function RankingScreen({ setScreen }: Pick<ScreenProps, 'setScreen'>) {
+export function RankingScreen() {
   return (
     <section>
       <h2>ハイスコア一覧</h2>
-      <p>共有ランキングは準備中です。現在のプレイ結果はランキングには登録されません。</p>
-      <Button onClick={() => setScreen('settings')}>練習をはじめる</Button>
+      <p>
+        ランキングは準備中です。
+        <br />
+        現在のプレイ結果はランキングに登録されません。
+      </p>
     </section>
   );
 }

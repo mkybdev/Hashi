@@ -43,14 +43,13 @@ function App() {
   return (
     <main className="shell">
       <div className="frame">
-        <header>
-          <span className="eyebrow">ことばでつなぐ、音のかたち</span>
-          <h1>
-            Hashi<span>はし</span>
-          </h1>
-        </header>
+        {screen === 'home' && (
+          <header>
+            <h1>Hashi</h1>
+          </header>
+        )}
         {screen === 'home' && <HomeScreen setScreen={setScreen} />}
-        {screen === 'help' && <HelpScreen setScreen={setScreen} />}
+        {screen === 'help' && <HelpScreen />}
         {screen === 'settings' && <SettingsScreen game={game} start={start} />}
         {screen === 'play' && (
           <PlayScreen
@@ -67,7 +66,7 @@ function App() {
         {screen === 'result' && (
           <ResultScreen game={game} setScreen={setScreen} start={start} correct={correct} />
         )}
-        {screen === 'ranking' && <RankingScreen setScreen={setScreen} />}
+        {screen === 'ranking' && <RankingScreen />}
         {game.error && screen === 'play' && (
           <div role="alert">
             <p className="failure">{game.error}</p>
@@ -77,17 +76,26 @@ function App() {
           </div>
         )}
         {screen !== 'home' && (
-          <button type="button" className="text-button back" onClick={() => leave('home')}>
-            タイトルへ戻る
-          </button>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '2rem',
+              marginBottom: '0.5rem',
+            }}
+          >
+            <Button variant={'secondary'} onClick={() => leave('home')}>
+              タイトルへ戻る
+            </Button>
+          </div>
         )}
-        <footer>
-          同じリズムで、ことばの橋を。
-          <br />
-          <a href="https://github.com/mifunetoshiro/kanjium" target="_blank" rel="noreferrer">
-            アクセントデータ: Kanjium / Uros O.（CC BY-SA 4.0）
-          </a>
-        </footer>
+        {screen === 'home' && (
+          <footer>
+            <a href="https://github.com/mifunetoshiro/kanjium" target="_blank" rel="noreferrer">
+              アクセントデータ: Kanjium / Uros O.（CC BY-SA 4.0）
+            </a>
+          </footer>
+        )}
       </div>
     </main>
   );

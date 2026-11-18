@@ -145,8 +145,8 @@ class Catalog:
             answer = w
             pattern = matching_pattern(target, w)
             if w['mora_count'] == target['mora_count'] and pattern is not None:
-                return dict(correct=True, message='正解！同じ高低のリズムです。', answer=self.public(w, pattern), target=self.public(target, pattern))
-            message = '拍数または音の高低の並びが異なります。'
+                return dict(correct=True, message='正解！', answer=self.public(w, pattern), target=self.public(target, pattern))
+            message = '拍数またはアクセントが異なります。'
         return dict(correct=False, message=message, answer=self.public(answer) if answer else None, target=self.public(target))
 
 

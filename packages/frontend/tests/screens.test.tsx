@@ -14,9 +14,12 @@ test('目標達成後も最後の回答詳細と結果ボタンを表示する',
   expect(html).toContain('優位'); expect(html).toContain('周囲');
   expect(html).toContain('高・低・低'); expect(html).toContain('正解！');
   expect(html).toContain('結果を見る'); expect(html).not.toContain('次のお題へ');
-  expect(html).not.toContain('スキップ'); expect(html).toContain('計時停止中');
+  expect(html).not.toContain('スキップ'); expect(html).toContain('0.5 秒');
+  expect(html).toMatch(/type="button">結果を見る<\/button>/);
 });
 test('途中の正解では次のお題へ進める', () => {
   const html = render(null);
-  expect(html).toContain('次のお題へ'); expect(html).toContain('ここまでの結果を見る');
+  expect(html).toContain('次のお題へ'); expect(html).toContain('リタイアして結果を見る');
+  expect(html).toMatch(/type="button">次のお題へ<\/button>/);
+  expect(html).toMatch(/type="button"[^>]*>リタイアして結果を見る<\/button>/);
 });
